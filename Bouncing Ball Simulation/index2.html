@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Bouncing Ball Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 10px;
+            text-align: center;
+            background-color: #222;
+            color: white;
+        }
+        canvas {
+            border: 1px solid #444;
+            display: block;
+            margin: 10px auto;
+            background-color: black;
+        }
+        .controls {
+            margin: 10px;
+        }
+        button {
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Advanced Bouncing Ball Simulation</h1>
+    <div class="controls">
+        <button id="addBall">Add Random Ball</button>
+        <button id="clearBalls">Clear All</button>
+        <span>Material: <select id="materialSelect">
+            <option value="rubber">Rubber</option>
+            <option value="glass">Glass</option>
+            <option value="steel">Steel</option>
+            <option value="wood">Wood</option>
+        </select></span>
+        <span>Show Trajectory: <input type="checkbox" id="showTrajectory" checked></span>
+    </div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <div>Click and drag to throw a ball | Right-click to change ball size</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const addBallBtn = document.getElementById('addBall');
+        const clearBallsBtn = document.getElementById('clearBalls');
+        const materialSelect = document.getElementById('materialSelect');
+        const showTrajectoryCheck = document.getElementById('showTrajectory');
+        
+        // Physics constants
+        const GRAVITY = 0.5;
+        
+        // Ball materials with different properties
+        const MATERIALS = {
+            "rubber": { elasticity: 0.8, friction: 0.99, color: "red" },
+            "glass": { elasticity: 0.95, friction: 0.998, color: "#0064ff" },
+            "steel": { elasticity: 0.7, friction: 0.95, color: "#c8c8c8" },
+            "wood": { elasticity: 0.6, friction: 0.9, color: "brown" }
+        };
+        
+        // Ball class
+        class Ball {
+            constructor(x, y, material = "rubber", radius = 20) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.vx = Math.random() * 6 - 3;
+                this.vy = Math.random() * 6 - 3;
+                this.material = material;
+                this.trajectory = [];
+                this.maxTrajectory = 50;
+            }
+            
+            get elasticity() {
+                return MATERIALS[this.material].elasticity;
+            }
+            
+            get friction() {
+                return MATERIALS[this.material].friction;
+            }
+            
+            get color() {
+                return MATERIALS[this.material].color;
+            }
+            
+            update() {
+                // Apply gravity
+                this.vy += GRAVITY;
+                
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Record trajectory
+                this.trajectory.push({ x: this.x, y: this.y });
+                if (this.trajectory.length > this.maxTrajectory) {
+                    this.trajectory.shift();
+                }
+                
+                // Collision with walls
+                if (this.x - this.radius < 0) {
+                    this.x = this.radius;
+                    this.vx = -this.vx * this.elasticity;
+                    this.vy *= this.friction;
+                } else if (this.x + this.radius > canvas.width) {
+                    this.x = canvas.width - this.radius;
+                    this.vx = -this.vx * this.elasticity;
+                    this.vy *= this.friction;
+                }
+                
+                // Collision with floor/ceiling
+                if (this.y + this.radius > canvas.height) {
+                    this.y = canvas.height - this.radius;
+                    this.vy = -this.vy * this.elasticity;
+                    this.vx *= this.friction;
+                } else if (this.y - this.radius < 0) {
+                    this.y = this.radius;
+                    this.vy = -this.vy * this.elasticity;
+                    this.vx *= this.friction;
+                }
+            }
+            
+            draw() {
+                // Draw trajectory if enabled
+                if (showTrajectoryCheck.checked && this.trajectory.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trajectory[0].x, this.trajectory[0].y);
+                    for (let i = 1; i < this.trajectory.length; i++) {
+                        ctx.lineTo(this.trajectory[i].x, this.trajectory[i].y);
+                    }
+                    ctx.strokeStyle = this.color + "80"; // Add transparency
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                
+                // Draw ball
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Draw material label
+                ctx.fillStyle = "white";
+                ctx.font = "12px Arial";
+                ctx.textAlign = "center";
+                ctx.fillText(this.material, this.x, this.y - this.radius - 5);
+            }
+        }
+        
+        // Simulation variables
+        let balls = [];
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let currentRadius = 20;
+        
+        // Initialize with some balls
+        function initBalls() {
+            balls = [];
+            for (let i = 0; i < 3; i++) {
+                const materials = Object.keys(MATERIALS);
+                const material = materials[Math.floor(Math.random() * materials.length)];
+                balls.push(new Ball(
+                    Math.random() * (canvas.width - 100) + 50,
+                    Math.random() * (canvas.height - 100) + 50,
+                    material,
+                    Math.random() * 15 + 10
+                ));
+            }
+        }
+        
+        // Check collision between two balls
+        function checkCollision(ball1, ball2) {
+            const dx = ball1.x - ball2.x;
+            const dy = ball1.y - ball2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < ball1.radius + ball2.radius) {
+                // Calculate collision angle
+                const angle = Math.atan2(dy, dx);
+                
+                // Move balls apart
+                const overlap = (ball1.radius + ball2.radius - distance) / 2;
+                ball1.x += overlap * Math.cos(angle);
+                ball1.y += overlap * Math.sin(angle);
+                ball2.x -= overlap * Math.cos(angle);
+                ball2.y -= overlap * Math.sin(angle);
+                
+                // Calculate collision response
+                const totalElasticity = (ball1.elasticity + ball2.elasticity) / 2;
+                const totalFriction = (ball1.friction + ball2.friction) / 2;
+                
+                // Exchange velocities (simplified physics)
+                [ball1.vx, ball2.vx] = [ball2.vx * totalElasticity, ball1.vx * totalElasticity];
+                [ball1.vy, ball2.vy] = [ball2.vy * totalElasticity, ball1.vy * totalElasticity];
+                
+                // Apply friction
+                ball1.vx *= totalFriction;
+                ball1.vy *= totalFriction;
+                ball2.vx *= totalFriction;
+                ball2.vy *= totalFriction;
+            }
+        }
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Update and draw all balls
+            for (const ball of balls) {
+                ball.update();
+                ball.draw();
+            }
+            
+            // Check collisions between all balls
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    checkCollision(balls[i], balls[j]);
+                }
+            }
+            
+            // Draw drag line if dragging
+            if (isDragging) {
+                ctx.beginPath();
+                ctx.moveTo(dragStart.x, dragStart.y);
+                ctx.lineTo(mouseX, mouseY);
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Event listeners
+        let mouseX = 0, mouseY = 0;
+        
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+        
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // Left click
+                const rect = canvas.getBoundingClientRect();
+                dragStart = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+                isDragging = true;
+            }
+        });
+        
+        canvas.addEventListener('mouseup', (e) => {
+            if (e.button === 0 && isDragging) { // Left click release
+                isDragging = false;
+                const rect = canvas.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+                
+                // Create new ball with velocity based on drag
+                const material = materialSelect.value;
+                const newBall = new Ball(dragStart.x, dragStart.y, material, currentRadius);
+                newBall.vx = (dragStart.x - endX) / 10;
+                newBall.vy = (dragStart.y - endY) / 10;
+                balls.push(newBall);
+            } else if (e.button === 2) { // Right click
+                // Change ball size on right click
+                currentRadius = currentRadius === 20 ? 30 : 20;
+                e.preventDefault(); // Prevent context menu
+            }
+        });
+        
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault(); // Prevent context menu on right click
+        });
+        
+        addBallBtn.addEventListener('click', () => {
+            const materials = Object.keys(MATERIALS);
+            const material = materials[Math.floor(Math.random() * materials.length)];
+            balls.push(new Ball(
+                Math.random() * (canvas.width - 100) + 50,
+                Math.random() * (canvas.height - 100) + 50,
+                material,
+                Math.random() * 15 + 10
+            ));
+        });
+        
+        clearBallsBtn.addEventListener('click', () => {
+            balls = [];
+        });
+        
+        // Start the simulation
+        initBalls();
+        gameLoop();
+    </script>
+</body>
+</html>

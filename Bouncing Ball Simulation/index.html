@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bouncing Ball Simulation</title>
+    <style>
+        canvas {
+            border: 5px solid brown;
+            display: block;
+            margin: 0 auto;
+            background-color: lightblue;
+        }
+        body{
+            background-color: black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Physics constants
+        const GRAVITY = 0.5;
+        const ELASTICITY = 0.8;
+        const FRICTION = 0.99;
+        
+        // Ball properties
+        const ball = {
+            x: 100,
+            y: 100,
+            radius: 20,
+            vx: 3,
+            vy: 0,
+            color: 'red'
+        };
+        
+        function update() {
+            // Apply gravity
+            ball.vy += GRAVITY;
+            
+            // Update position
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Collision with walls
+            if (ball.x - ball.radius < 0) {
+                ball.x = ball.radius;
+                ball.vx = -ball.vx * ELASTICITY;
+                ball.vy *= FRICTION;
+            } else if (ball.x + ball.radius > canvas.width) {
+                ball.x = canvas.width - ball.radius;
+                ball.vx = -ball.vx * ELASTICITY;
+                ball.vy *= FRICTION;
+            }
+            
+            // Collision with floor/ceiling
+            if (ball.y + ball.radius > canvas.height) {
+                ball.y = canvas.height - ball.radius;
+                ball.vy = -ball.vy * ELASTICITY;
+                ball.vx *= FRICTION;
+            } else if (ball.y - ball.radius < 0) {
+                ball.y = ball.radius;
+                ball.vy = -ball.vy * ELASTICITY;
+                ball.vx *= FRICTION;
+            }
+        }
+        
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+        
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the simulation
+        gameLoop();
+    </script>
+</body>
+</html>
