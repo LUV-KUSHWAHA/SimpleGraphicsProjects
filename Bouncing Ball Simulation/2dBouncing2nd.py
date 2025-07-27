@@ -22,7 +22,7 @@ MATERIALS = {
 
 # Set up display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Advanced Bouncing Ball Simulation")
+pygame.display.set_caption("Bouncing Ball Simulation")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont('Arial', 16)
 
